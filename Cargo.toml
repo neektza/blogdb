@@ -1,0 +1,6 @@
+[package]
+name = "toylang"
+version = "0.1.0"
+authors = ["Nikica Jokic <neektza@gmail.com>"]
+
+[dependencies]
