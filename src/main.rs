@@ -1,8 +1,4 @@
-use std::io;
-use std::io::prelude::*;
-
-use std::string::String;
-
+#[derive(Clone, Debug)]
 enum OpType {
     Plus,
     Minus,
@@ -10,40 +6,39 @@ enum OpType {
     Times,
 }
 
+#[derive(Clone, Debug)]
 enum Token {
     Integer(i32),
     Op(OpType),
 }
 
-fn tokenize(line: String) -> Vec<Token> {
-    let tokens = vec! [Token::Integer(7), Token::Op(OpType::Plus), Token::Integer(3)];
-    return tokens;
-}
+fn eval_line(tokens: Vec<Token>) -> i32 {
+    let mut my_tokens = tokens.clone();
+    my_tokens.reverse();
 
-fn evalLine(tokens: Vec<Token>) -> i32 {
+    let mut result = match my_tokens.pop().unwrap() {
+        Token::Integer(num) => num,
+        _ => panic!("Num expected"),
+    };
 
-    for token in tokens {
-        match token {
-            Token::Integer(i) => println!("{}", i),
-            Token::Op(OpType::Plus) => println!("PLUS"),
-            Token::Op(OpType::Minus) => println!("MINUS"),
-            Token::Op(OpType::Times) => println!("TIMES"),
-            Token::Op(OpType::Div) => println!("DIV"),
+    while let Some(Token::Op(op)) = my_tokens.pop() {
+        if let Some(Token::Integer(rval)) = my_tokens.pop() {
+            result = match op {
+                OpType::Plus => result + rval,
+                OpType::Minus => result - rval,
+                OpType::Times => result * rval,
+                OpType::Div => result / rval,
+            }
+        } else {
+            panic!("Num expected");
         }
-    }
+    };
 
-    return 12;
-}
-
-fn interpret(line: String) -> i32 {
-    let tokens = tokenize(line);
-    return evalLine(tokens);
+    return result;
 }
 
 fn main() {
-    let stdin = io::stdin();
-    for line in stdin.lock().lines() {
-        // println!("{}", line.unwrap());
-        println!("{}", interpret(line.unwrap()));
-    }
+    let tokens = vec! [Token::Integer(22), Token::Op(OpType::Minus), Token::Integer(7), Token::Op(OpType::Div), Token::Integer(3), Token::Op(OpType::Times), Token::Integer(4), Token::Op(OpType::Plus), Token::Integer(1)];
+    println!("Initial: {:?}", tokens);
+    println!("{}", eval_line(tokens));
 }
