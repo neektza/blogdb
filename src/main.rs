@@ -1,44 +1,185 @@
 #[derive(Clone, Debug)]
-enum OpType {
-    Plus,
-    Minus,
+enum MultiplicativeOp {
+    Mul,
     Div,
-    Times,
+}
+
+#[derive(Clone, Debug)]
+enum AdditiveOp {
+    Add,
+    Sub,
 }
 
 #[derive(Clone, Debug)]
 enum Token {
+    AddOp(AdditiveOp),
+    MultOp(MultiplicativeOp),
+    Identifier(String),
     Integer(i32),
-    Op(OpType),
+    Error(String),
 }
 
-fn eval_line(tokens: Vec<Token>) -> i32 {
-    let mut my_tokens = tokens.clone();
-    my_tokens.reverse();
+/* ----------------------------- LEXER BEGIN */
 
-    let mut result = match my_tokens.pop().unwrap() {
-        Token::Integer(num) => num,
-        _ => panic!("Num expected"),
-    };
+fn consume_number(current_char: char, iter: &mut std::str::Chars) -> Option<i32> {
+    let mut peekable_iter = iter.peekable();
+    let mut num:Vec<char> = Vec::new();
 
-    while let Some(Token::Op(op)) = my_tokens.pop() {
-        if let Some(Token::Integer(rval)) = my_tokens.pop() {
-            result = match op {
-                OpType::Plus => result + rval,
-                OpType::Minus => result - rval,
-                OpType::Times => result * rval,
-                OpType::Div => result / rval,
+    num.push(current_char);
+
+    while let Some(item) = peekable_iter.next() {
+        num.push(item);
+
+        if let Some(next_item) = peekable_iter.peek() {
+            if !next_item.is_digit(10) {
+                break;
             }
-        } else {
-            panic!("Num expected");
         }
-    };
+    }
 
-    return result;
+    let num_string = num.iter().cloned().collect::<String>();
+    return num_string.parse::<i32>().ok();
 }
+
+fn tokenize(line: &str) -> Vec<Token> {
+    let mut iter = line.chars();
+    let mut tokens = Vec::new();
+    let mut token;
+
+    while let Some(c) = iter.next() {
+        if c.is_whitespace() { continue };
+
+        if c.is_digit(10) {
+            token = match consume_number(c, &mut iter) {
+                Some(i32) => Token::Integer(i32),
+                None => Token::Error(String::from("error scanning digits")),
+            };
+        } else {
+            token = match c {
+                '+' => Token::AddOp(AdditiveOp::Add),
+                '-' => Token::AddOp(AdditiveOp::Sub),
+                '*' => Token::MultOp(MultiplicativeOp::Mul),
+                '/' => Token::MultOp(MultiplicativeOp::Div),
+                _   => Token::Error(String::from("unknown token")),
+            };
+        };
+        tokens.push(token);
+    }
+    return tokens;
+}
+
+
+/* ----------------------------- LEXER END */
+
+#[derive(Clone, Debug)]
+struct Factor(i32);
+
+#[derive(Clone, Debug)]
+struct Term (Factor, Vec<(MultiplicativeOp, Factor)>);
+
+#[derive(Clone, Debug)]
+struct Expr (Term, Vec<(AdditiveOp, Term)>);
+
+/* ----------------------------- PARSER BEGIN */
+
+fn parse_factor(mut iter: &mut std::slice::Iter<Token>) -> Factor {
+    if let Some(t) = iter.next() {
+        match *t {
+            Token::Integer(i) => Factor(i),
+            _ => panic!("not a factor"),
+        }
+    } else {
+        panic!("parsing error");
+    }
+        
+}
+
+fn parse_term(mut iter: &mut std::slice::Iter<Token>) -> Term {
+
+    let first = parse_factor(&mut iter);
+    let mut rest : Vec<(MultiplicativeOp, Factor)> = Vec::new();
+
+    while let Some(t) = iter.next() {
+        if let Token::MultOp(ref o) = *t {
+            let tmp = match o {
+                &MultiplicativeOp::Mul => (MultiplicativeOp::Mul, parse_factor(&mut iter)),
+                &MultiplicativeOp::Div => (MultiplicativeOp::Div, parse_factor(&mut iter)),
+            };
+            rest.push(tmp);
+        } else {
+            println!("U ELSE TERM SAM");
+            ()
+        }
+    }
+
+    return Term(first, rest);
+}
+
+fn parse_expr(tokens: Vec<Token>) -> Expr {
+    let mut iter = tokens.iter();
+
+    let first = parse_term(&mut iter);
+    let mut rest : Vec<(AdditiveOp, Term)> = Vec::new();
+
+    while let Some(t) = iter.next() {
+        if let Token::AddOp(ref o) = *t {
+            let tmp = match o {
+                &AdditiveOp::Add => (AdditiveOp::Add, parse_term(&mut iter)),
+                &AdditiveOp::Sub => (AdditiveOp::Sub, parse_term(&mut iter)),
+            };
+            rest.push(tmp);
+        } else {
+            rest.push();
+            ()
+        }
+
+    }
+
+    return Expr(first, rest);
+}
+
+/* ----------------------------- PARSER END */
 
 fn main() {
-    let tokens = vec! [Token::Integer(22), Token::Op(OpType::Minus), Token::Integer(7), Token::Op(OpType::Div), Token::Integer(3), Token::Op(OpType::Times), Token::Integer(4), Token::Op(OpType::Plus), Token::Integer(1)];
-    println!("Initial: {:?}", tokens);
-    println!("{}", eval_line(tokens));
+    /* EXAMPLE 1 */
+
+    let line1 = "631 * 212";
+    println!("{:?}", line1);
+
+    let tokens1 = tokenize(&line1);
+
+    let ast1 = parse_expr(tokens1);
+    println!("{:?}", ast1);
+
+    /* EXAMPLE 2 */
+    
+    let line2 = "631 + 212";
+    println!("{:?}", line2);
+
+    let tokens2 = tokenize(&line2);
+
+    let ast2 = parse_expr(tokens2);
+    println!("{:?}", ast2);
+
+    /* EXAMPLE 3 */
+    
+    let line3 = "742 * 631 + 212";
+    println!("{:?}", line3);
+
+    let tokens3 = tokenize(&line3);
+
+    let ast3 = parse_expr(tokens3);
+    println!("{:?}", ast3);
+    
+    /* EXAMPLE 4 */
+    
+    let line4 = "742 + 641 * 212";
+    println!("{:?}", line4);
+
+    let tokens4 = tokenize(&line4);
+
+    let ast4 = parse_expr(tokens4);
+    println!("{:?}", ast4);
 }
+
+
