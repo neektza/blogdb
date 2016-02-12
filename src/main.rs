@@ -82,61 +82,67 @@ struct Expr (Term, Vec<(AdditiveOp, Term)>);
 
 /* ----------------------------- PARSER BEGIN */
 
-fn parse_factor(mut iter: &mut std::slice::Iter<Token>) -> Factor {
+fn parse_factor(mut iter: &mut std::iter::Peekable<std::slice::Iter<Token>>) -> Factor {
     if let Some(t) = iter.next() {
         match *t {
             Token::Integer(i) => Factor(i),
-            _ => panic!("not a factor"),
+            _ => Factor(-1),
         }
     } else {
-        panic!("parsing error");
+        panic!("parsing error, no char");
     }
         
 }
 
-fn parse_term(mut iter: &mut std::slice::Iter<Token>) -> Term {
-
-    let first = parse_factor(&mut iter);
+fn parse_term(mut iter: &mut std::iter::Peekable<std::slice::Iter<Token>>) -> Term {
+    let mut first = Factor(666);
     let mut rest : Vec<(MultiplicativeOp, Factor)> = Vec::new();
 
-    while let Some(t) = iter.next() {
-        if let Token::MultOp(ref o) = *t {
+    while let Some(&t) = iter.peek() {
+        if let Token::Integer(ref i) = *t {
+            first = parse_factor(&mut iter);
+        } else if let Token::MultOp(ref o) = *t {
+            iter.next();
             let tmp = match o {
                 &MultiplicativeOp::Mul => (MultiplicativeOp::Mul, parse_factor(&mut iter)),
                 &MultiplicativeOp::Div => (MultiplicativeOp::Div, parse_factor(&mut iter)),
             };
             rest.push(tmp);
         } else {
-            println!("U ELSE TERM SAM");
-            ()
+            break;
         }
     }
 
     return Term(first, rest);
 }
 
-fn parse_expr(tokens: Vec<Token>) -> Expr {
-    let mut iter = tokens.iter();
-
-    let first = parse_term(&mut iter);
+fn parse_expr(mut iter: &mut std::iter::Peekable<std::slice::Iter<Token>>) -> Expr {
+    let mut first = Term(Factor(666), vec![]);
     let mut rest : Vec<(AdditiveOp, Term)> = Vec::new();
 
-    while let Some(t) = iter.next() {
-        if let Token::AddOp(ref o) = *t {
+    while let Some(&t) = iter.peek() {
+        if let Token::Integer(ref i) = *t {
+            first = parse_term(&mut iter);
+        } else if let Token::AddOp(ref o) = *t {
+            iter.next();
             let tmp = match o {
                 &AdditiveOp::Add => (AdditiveOp::Add, parse_term(&mut iter)),
                 &AdditiveOp::Sub => (AdditiveOp::Sub, parse_term(&mut iter)),
             };
             rest.push(tmp);
         } else {
-            rest.push();
-            ()
+            break;
         }
-
     }
 
     return Expr(first, rest);
 }
+
+fn parse(tokens: Vec<Token>) -> Expr {
+    let mut iter = tokens.iter().peekable();
+    return parse_expr(&mut iter);
+}
+
 
 /* ----------------------------- PARSER END */
 
@@ -147,9 +153,10 @@ fn main() {
     println!("{:?}", line1);
 
     let tokens1 = tokenize(&line1);
+    // println!("{:?}", tokens1);
 
-    let ast1 = parse_expr(tokens1);
-    println!("{:?}", ast1);
+    let ast1 = parse(tokens1);
+    println!("{:?}\n", ast1);
 
     /* EXAMPLE 2 */
     
@@ -157,9 +164,10 @@ fn main() {
     println!("{:?}", line2);
 
     let tokens2 = tokenize(&line2);
+    // println!("{:?}", tokens2);
 
-    let ast2 = parse_expr(tokens2);
-    println!("{:?}", ast2);
+    let ast2 = parse(tokens2);
+    println!("{:?}\n", ast2);
 
     /* EXAMPLE 3 */
     
@@ -167,9 +175,10 @@ fn main() {
     println!("{:?}", line3);
 
     let tokens3 = tokenize(&line3);
+    // println!("{:?}", tokens3);
 
-    let ast3 = parse_expr(tokens3);
-    println!("{:?}", ast3);
+    let ast3 = parse(tokens3);
+    println!("{:?}\n", ast3);
     
     /* EXAMPLE 4 */
     
@@ -177,9 +186,21 @@ fn main() {
     println!("{:?}", line4);
 
     let tokens4 = tokenize(&line4);
+    // println!("{:?}", tokens4);
 
-    let ast4 = parse_expr(tokens4);
-    println!("{:?}", ast4);
+    let ast4 = parse(tokens4);
+    println!("{:?}\n", ast4);
+    
+    /* EXAMPLE 4 */
+    
+    let line5 = "752 + 651 * 212 + 935";
+    println!("{:?}", line5);
+
+    let tokens5 = tokenize(&line5);
+    // println!("{:?}", tokens5);
+
+    let ast5 = parse(tokens5);
+    println!("{:?}\n", ast5);
 }
 
 
