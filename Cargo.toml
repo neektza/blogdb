@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Nikica Jokic <neektza@gmail.com>"]
 
 [dependencies]
-nom = "~1.2.2"
+byteorder = "0.4.2"
+time = "0.1.34"
